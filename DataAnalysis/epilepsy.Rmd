@@ -1,0 +1,536 @@
+---
+title: "Data analysis of Epileptic seizure data"
+author: "Suhas Shastry"
+date: "November 24, 2017"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(psych)
+library(kernlab)
+library(mvtnorm)
+library(mclust)
+library(MASS)
+library(e1071)
+library(class)
+library(randomForest)
+library(HDclassif)
+library(expss)
+setwd("E:\\GitHub\\DataAnalysis")
+```
+
+```{r include=FALSE}
+# f <- read.table("F/F001.txt")
+# for(i in 2:100){
+#   j <- sprintf("%03d", i)
+#   f1 <- read.table(paste("F/F",j,".txt",sep = ""))
+#   f<-cbind(f,f1)
+# }
+# f <- t(f)
+# f <- cbind(2,f)
+# 
+# s <- read.table("S/S001.txt")
+# for(i in 2:100){
+#   j <- sprintf("%03d", i)
+#   s1 <- read.table(paste("S/S",j,".txt",sep = ""))
+#   s<-cbind(s,s1)
+# }
+# s <- t(s)
+# s <- cbind(1,s)
+# 
+# n <- read.table("N/N001.txt")
+# for(i in 2:100){
+#   j <- sprintf("%03d", i)
+#   n1 <- read.table(paste("N/N",j,".txt",sep = ""))
+#   n<-cbind(n,n1)
+# }
+# n <- t(n)
+# n <- cbind(3,n)
+# 
+# o <- read.table("O/O001.txt")
+# for(i in 2:100){
+#   j <- sprintf("%03d", i)
+#   o1 <- read.table(paste("O/O",j,".txt",sep = ""))
+#   o<-cbind(o,o1)
+# }
+# o <- t(o)
+# o <- cbind(4,o)
+# 
+# z <- read.table("Z/Z001.txt")
+# for(i in 2:100){
+#   j <- sprintf("%03d", i)
+#   z1 <- read.table(paste("Z/Z",j,".txt",sep = ""))
+#   z<-cbind(z,z1)
+# }
+# z <- t(z)
+# z <- cbind(5,z)
+# origData <- rbind(s,f,n,o,z)
+# write.csv(origData, file = "OriginalData.csv")
+```
+\section{Background}
+Epileptic seizure is the abnormal activity in the brain signals for few moments resulting in strange sensations, emotions, and behavior. The data was captured by a technique called Electroencephalography (EEG). EEG is a noninvasive method involves placing metal electrodes on scalp which measure voltage fluctuation in brain signals. \hfill\break
+\hfill\break
+\href{http://epileptologie-bonn.de/cms/front_content.php?idcat=193&lang=3&changelang=3}{Data} was collected on 100 patients and 400 healthy test subjects for a duration of 23.6 seconds. This time series data was sampled into 4097 data points. This dataset after integration has 500 rows and 4097 columns. Original data being high-dimensional in nature, it poses a challenge for classical methods in data analysis as sample co-variance matrix is not a good estimator of population co variance matrix. 
+\hfill\break
+\hfill\break
+Hence data was then divided and shuffled every 4097 data points into 23 chunks by \href{"HTTP://archive.ics.uci.edu/ml/datasets/Epileptic+Seizure+Recognition"}{data owner}, each chunk contains 178 data points for 1 second, and each data point is the value of the EEG recording at a different point in time. So now data has 23 x 500 = 11500 pieces of information(row), each information contains 178 data points for 1 second(column), the last column represents the label $y$ $\{1,2,3,4,5\}$. \hfill\break
+The response variable is $y$ in column 179, the Explanatory variables $X_1, X_2,\dots, X_{178}$ \hfill\break
+$y$ contains the category of the 178-dimensional input vector. Specifically, $y$ in $\{1, 2, 3, 4, 5\}$: \hfill\break\hfill\break
+1 - Recording of seizure activity\hfill\break
+2 - They recorder the EEG from the area where the tumor was located\hfill\break
+3 - They identify where the region of the tumor was in the brain and recording the EEG activity from the healthy brain area\hfill\break
+4 - eyes closed, means when they were recording the EEG signal the patient had their eyes closed\hfill\break
+5 - eyes open, means when they were recording the EEG signal of the brain the patient had their eyes open\hfill\break
+The goal of this project is to distinguish seizure data and non-seizure data.
+\section{Analysis}
+```{r include=FALSE}
+data <- read.csv("E:/R Workspace/557/Project/data.csv")
+x <- data[,2:179]
+cor.x <- cor(x)
+
+class1 <- data[data$y==1,-1]
+class2 <- data[data$y==2,-1]
+class3 <- data[data$y==3,-1]
+class4 <- data[data$y==4,-1]
+class5 <- data[data$y==5,-1]
+class2to5 <- data[data$y!=1,-1]
+class23 <- data[data$y==2|data$y==3,-1]
+```
+```{r echo=FALSE}
+x1 <- class1[,-179]
+x2 <- class2[,-179]
+x3 <- class3[,-179]
+x4 <- class4[,-179]
+x5 <- class5[,-179]
+```
+```{r echo=FALSE}
+x25 <- class2to5[,-179]
+x23 <- class23[,-179]
+n <- dim(x1)[1]
+p <- dim(x1)[2]
+mean.x1 <- colMeans(x1)
+mean.x2 <- colMeans(x2)
+mean.x3 <- colMeans(x3)
+mean.x4 <- colMeans(x4)
+mean.x5 <- colMeans(x5)
+mean.x25 <- colMeans(x25)
+mean.x23 <- colMeans(x23)
+cov.x1 <- cov(x1)
+cov.x2 <- cov(x2)
+cov.x3 <- cov(x3)
+cov.x4 <- cov(x4)
+cov.x5 <- cov(x5)
+cov.x25 <- cov(x25)
+cov.x23 <- cov(x23)
+N <- 5*n
+k <- 5
+```
+\subsection{Time series data}
+To picture the original data, column means were plotted for 4097 time-frames for 5 different classes. \hfill\break
+```{r fig.width=15,fig.height=3,echo=FALSE}
+origData <- read.csv("OriginalData.csv")
+origData <- origData[,-1]
+o1 <- origData[origData$V1==1,]
+plot(colMeans(o1),col="white",xlab="Time frame",ylab="Signal",main="Mean of signal value of 100 patients belonging to class 1")
+lines(colMeans(o1))
+
+o2 <- origData[origData$V1==2,]
+plot(colMeans(o2),col="white",xlab="Time frame",ylab="Signal",main="Mean of signal value of 100 patients belonging to class 2")
+lines(colMeans(o2))
+
+o3 <- origData[origData$V1==3,]
+plot(colMeans(o3),col="white",xlab="Time frame",ylab="Signal",main="Mean of signal value of 100 patients belonging to class 3")
+lines(colMeans(o3))
+
+o4 <- origData[origData$V1==4,]
+plot(colMeans(o4),col="white",xlab="Time frame",ylab="Signal",main="Mean of signal value of 100 patients belonging to class 4")
+lines(colMeans(o4))
+
+o5 <- origData[origData$V1==5,]
+plot(colMeans(o5),col="white",xlab="Time frame",ylab="Signal",main="Mean of signal value of 100 patients belonging to class 5")
+lines(colMeans(o5))
+```
+\hfill\break
+Even though nothing can from be inferred from these graphs, it gives the basic idea about the brain signals corresponding to five different classes.
+\subsection{Manova}
+Idea here is to check whether all five classes have the same mean vector. For this lets first check the equality of variance as Manova requires five datasets to be from population having same co-variance matrix.
+```{r echo=FALSE}
+#Testing of equality of variance
+logofdetN<- function(mat){
+  product=1
+  temp <- eigen(mat)$values
+  for(i in 1:178){
+    if(i%%2==0){
+      product = product/(10)
+    }
+    product = product*temp[i]
+  }
+  return(log(product)+(2.3025*89))
+}
+logofdetP<- function(mat){
+  product=1
+  temp <- eigen(mat)$values
+  for(i in 1:178){
+    if(i%%2==0){
+      product = product/(10^8)
+    }
+    product = product*temp[i]
+  }
+  return(log(product)+(2.3025*8*89))
+}
+```
+\hfill\break
+```{r}
+#Testing cov.x1 = cov.x2 = cov.x3 = cov.x4 = cov.x5
+pool.cov <- ((n-1)/N)*(cov.x1 + cov.x2 + cov.x3 + cov.x4 + cov.x5)
+test.stat1 <- N*logofdetP(pool.cov) - n*(logofdetP(cov.x1) + 
+            logofdetN(cov.x2) + logofdetN(cov.x3) +
+              logofdetN(cov.x4) +logofdetN(cov.x5))
+m <- (k-1)*p*(p+1)/2
+thr1.chisq <- qchisq(0.95, m)
+test.stat1>thr1.chisq
+```
+\hfill\break
+As test statistic is greater than critical value, we are rejecting null hypothesis at level $\alpha=0.05$. As all datasets are not from population of same co-variance matrix, we cannot continue further to conduct Manova test.
+\subsection{Hotelling $T^2$}
+Since means of five datasets cannot be compared to equality, motivation here is to test pairwise using two sample Hotelling $T^2$ test.
+\hfill\break
+```{r echo=FALSE}
+#two sample test
+Hotelling <- function(m1,m2,v1,v2,n1,n2){
+  n.cov1 <- v1/n1
+  n.cov2 <- v2/n2
+  n.cov <- solve(n.cov1+n.cov2)
+  nc1 <- n.cov1%*%n.cov
+  nc2 <- n.cov2%*%n.cov
+  nu <- (p+p^2)/(sum(diag(nc1%*%nc1))/n1 + sum(diag(nc2%*%nc2))/n2
+  + (sum(diag(nc1)))^2/n1 + (sum(diag(nc2)))^2/n2)
+  # T^2 statistic
+  t2.u <- t((m1-m2))%*%solve((1/n1)*v1+(1/n2)*v2)%*%(m1-m2)
+  #print(t2.u)
+  c <- (p*nu/(nu-p+1))*qf(0.95, p, nu-p+1)
+  #print(c)
+  #print(t2.u>c)
+  return(1-pf(q = (nu-p+1)/(p*nu)*t2.u,df1 = p,df2 = nu-p+1))
+}
+```
+\subsubsection{Class 1 and rest}
+Mean $\mu_1$ of class 1 = Mean of class 2 to 5 $\mu_{2-5}$. 
+\hfill\break $H_0:\mu_1 = \mu_{2-5}$ vs $H_A:\mu_1 \ne \mu_{2-5}$\hfill\break
+```{r}
+Hotelling(mean.x1,mean.x25,cov.x1,cov.x25,n,n*4)
+```
+\hfill\break
+There is a strong evidence $(p-value = 0.0017)$ to conclude that means are not equal. This indicates that there is a possibility of data classification into two groups, one belonging to class 1 and the other belonging to rest of the classes. Even though there is no guarantee that a classification should exist, rejecting null hypothesis is a motivation to attempt classification on data set which is done in later section.
+\subsubsection{Class 1 and class 3}
+Mean $\mu_1$ of class 1 = Mean $\mu_3$ of class 3
+\hfill\break $H_0:\mu_1 = \mu_3$ vs $H_A:\mu_1 \ne \mu_3$\hfill\break
+As datasets of class 1 is collected from seizure activity and class 3 is collected from healthy brain in the same region, there should be difference in signal activities. Else the entire data analysis makes very little sense. Hence their means are tested for equality\hfill\break
+```{r}
+Hotelling(mean.x1,mean.x3,cov.x1,cov.x3,n,n)
+```
+\hfill\break
+Clearly, these means are not equal $(p-value = 0.0034)$. Classification is done on these two groups in later section.
+\subsubsection{Class 4 and class 5}
+Mean $\mu_4$ of class 4 = Mean $\mu_5$ of class 5
+\hfill\break $H_0:\mu_4 = \mu_5$ vs $H_A:\mu_4 \ne \mu_5$\hfill\break
+Class 4 indicates the signals of healthy brain when the subject closes his/her eyes. Class 5 indicates the signals of healthy brain when the subject opens his/her eyes. Expecting these means to be different.
+\hfill\break
+```{r}
+Hotelling(mean.x4,mean.x5,cov.x4,cov.x5,n,n)
+```
+\hfill\break
+These means are different $(p-value = 0.0037)$.
+```{r echo=FALSE}
+# Hotelling(mean.x1,mean.x2,cov.x1,cov.x2,n,n)
+# Hotelling(mean.x1,mean.x3,cov.x1,cov.x3,n,n)
+# Hotelling(mean.x1,mean.x4,cov.x1,cov.x4,n,n)
+# Hotelling(mean.x1,mean.x5,cov.x1,cov.x5,n,n)
+# 
+# Hotelling(mean.x2,mean.x3,cov.x2,cov.x3,n,n)
+# Hotelling(mean.x2,mean.x4,cov.x2,cov.x4,n,n)
+# Hotelling(mean.x2,mean.x5,cov.x2,cov.x5,n,n)
+# 
+# Hotelling(mean.x3,mean.x4,cov.x3,cov.x4,n,n)
+# Hotelling(mean.x3,mean.x5,cov.x3,cov.x5,n,n)
+# 
+# Hotelling(mean.x4,mean.x5,cov.x4,cov.x5,n,n)
+```
+\subsection{Principal Component Analysis (PCA)}
+Analysis on the co-variance matrix of the data is carried out using PCA. PCA converts a set of observations of possibly correlated variables into a set of values of linearly uncorrelated variables called principal components (PCs). As the data has 178 columns, we get a 178X178 farinaceous matrix and hence 178 PCs. Here are the scree plot of PCs and cumulative scree plot of PCs. Scree plot gives the idea about the variance explained by each PC and cumulative scree plot explains percentage of total variance explained by PCs.\hfill\break
+```{r fig.width=7,fig.height=3.5,echo=FALSE}
+x_scaled <- scale(x)
+pca <- eigen(var(x_scaled))
+plot(pca$values,col=4,xlab="Principle components",ylab="Eigen value",
+     main="Scree plot")
+#text(c(1:178),pca$values, c(1:178), cex=0.6, pos=4, col="blue")
+```
+\hfill\break
+```{r fig.width=6,fig.height=5.5,echo=FALSE}
+#Cumilative plot for S
+plot(cumsum(pca$values)/sum(pca$values),col=2,
+     xlab="Principle components",ylab="Cumilative variance",
+     main="Cumilative scree plot")
+text(c(1:178),cumsum(pca$values)/sum(pca$values), c(1:178), cex=0.6, pos=4, col="red")
+abline(h=0.8)
+```
+\hfill\break
+Since it takes 25 PCs to explain 80% of the total variance, only loading plots of first 4 PCs are drawn.
+\hfill\break
+```{r fig.width=3,fig.height=3,echo=FALSE}
+#loading graph for PC1
+for(i in 1:4){
+  plot(pca$vectors[,i],ylab="Eigen Value",xlab="Varibles",main=paste("PC",i))
+  abline(h=0)
+}
+```
+\hfill\break
+These PCs are used later for dimension reduction and clustering.
+\hfill\break
+```{r echo=FALSE,fig.height=3}
+z <- pca$vectors[,1]
+z[abs(z)<0.025] = 0
+t <- data.frame(c(1:147),z[z!=0])
+t1 <- dist(t)
+hc <- hclust(t1,method = "single")
+cl <- cutree(hc,12)
+ncl <- array()
+count<-1;
+for(i in 1:length(z)){
+  if(z[i]==0){
+    ncl[i] = 0;
+  }else{
+    ncl[i] = cl[count]
+    count=count+1;
+  }
+}
+plot(z,col=ncl>0,pch=ncl,ylab="Eigen Value",xlab="Varibles",main="PC1")
+abline(h=0)
+```
+\hfill\break
+PC1 is majorly dependent on these 12 sets of variables. Linear combination of these 12 sets of variables has the highest variance.
+\subsection{Factor Analysis}
+Aim is to find factors loadings or group of variables which have the highest co variances among them. Latent factors driving the data can be obtained using factor analysis.
+\hfill\break
+```{r fig.width=3,fig.height=3,echo=FALSE,warning=FALSE}
+fa <- fa(cor.x,nfactors = 10,rotate="varimax", n.obs = N,fm="ml")
+for(i in 1:4){
+  plot(fa$loadings[,i],ylab="Contribution",xlab="Varibles",main=paste("Loading of factor",i))
+  abline(h=0)
+}
+```
+\hfill\break
+Few spikes can be seen in loadings of each factor. Contribution from rest of the variables is close to zero. There is a clear factor representation in variables which are represented by spikes. These variables in spikes have the highest co variance among themselves. In the data point of view, brain signals of these time frames are closely dependent on each other.
+\hfill\break
+```{r echo=FALSE}
+# z <- fa$loadings[,1]
+# z[abs(z)<0.15] = 0
+# t <- data.frame(c(1:66),z[z!=0])
+# t1 <- dist(t)
+# hc <- hclust(t1,method = "single")
+# cl <- cutree(hc,6)
+# ncl <- array()
+# count<-1;
+# for(i in 1:length(z)){
+#   if(z[i]==0){
+#     ncl[i] = 0;
+#   }else{
+#     ncl[i] = cl[count]
+#     count=count+1;
+#   }
+# }
+# plot(z,col=ncl,pch=ncl)
+# abline(h=0)
+```
+\subsection{Canonical Correlation Analysis (CCA)}
+Variables are divided into two groups such that linear combination of these variables will have highest correlation between the groups. To find the two group of variables mean of each column in the data was plot expecting that there will be some spike of disruption in the graph.\hfill\break
+```{r fig.width = 8,fig.height = 4,echo=FALSE}
+plot(colMeans(x),xlab="Variables",ylab="Mean of every time frame column")
+```
+\hfill\break
+Since there are more than one spikes, data could not be divided into two meaningful groups and hence CCA could not be conducted on the data.
+\subsection{Cluster Analysis}
+The main ambition of the project is to distinguish seizure data and non seizure data. Clustering is a basic  to find intuitive guidance to separate data into classes. Classical clustering algorithms are applied on whole data. For each algorithm, a table is formed. Table rows are the actual classes data belong and columns are the classes after clustering. Ideally all the entries are expected on diagonals and non-diagonal entries are expected to be zero.
+\subsubsection{Complete linkage hierarchical clustering}
+```{r echo=FALSE}
+w <- dist(x)
+```
+```{r echo=FALSE}
+hc_complete <- hclust(w, method="complete")
+cl_complete <- cutree(hc_complete, k=5)
+#Complete linkage
+table(factor(data$y, levels=c(1:5)),factor(cl_complete, levels=c(1:5)))
+```
+\subsubsection{Average linkage hierarchical clustering}
+```{r echo=FALSE}
+hc_average <- hclust(w, method="average")
+cl_average <- cutree(hc_average, k=5)
+#Average linkage
+table(factor(data$y, levels=c(1:5)),factor(cl_average, levels=c(1:5)))
+```
+\subsubsection{Single linkage hierarchical clustering}
+```{r echo=FALSE}
+hc_single <- hclust(w, method="single")
+cl_single <- cutree(hc_single, k=5)
+#Single linkage
+table(factor(data$y, levels=c(1:5)),factor(cl_single, levels=c(1:5)))
+```
+\subsubsection{K-Means clustering}
+```{r echo=FALSE}
+#kmeans
+cl <- kmeans(x,centers = 5)
+table(factor(data$y, levels=c(1:5)),factor(cl$cluster, levels=c(1:5)))
+```
+\hfill\break
+As we can see, none of the clustering methods are good. No algorithm could distinguish seizure data and non-seizure data. Another approach involving data reduction from 178 dimensions to 25 dimensions using PCA was employed. Clustering was tried on reduced dimension space between seizure data (Class 1) and healthy brain's data collected from the seizure region (Class 3).
+\subsubsection{Complete linkage for two classes}
+Dendrogram for two classes is plotted to check the behavior of the algorithm.
+\hfill\break
+```{r echo=FALSE,warning=FALSE,fig.width=15,fig.height=7}
+x1_dr <- as.matrix(scale(x1)) %*% pca$vectors[,1:25]
+x3_dr <- as.matrix(scale(x3)) %*% pca$vectors[,1:25]
+x_dr <- rbind(x1_dr,x3_dr)
+w_dr <- dist(x_dr)
+cl <- kmeans(x_dr,centers = 2)
+hc_complete <- hclust(w_dr, method="complete")
+
+ClustCol <- function(co, col,hm=T, lwd=1){
+  armlength <- 0.1*(max(co$height)-min(co$height))
+  for(i in 1:length(co$order)){
+    ## The o is a vector of F's and T's with a T at the height of the ith leaf.
+    o <- (co$merge[,1]==-co$order[i]) | (co$merge[,2]==-co$order[i])
+    if (hm) {
+      segments(i,0,i,co$height[o],col=col[co$ord[i]], lwd=lwd)
+    } else {
+      segments(i,co$height[o]-armlength,i,co$height[o],col=col[co$ord[i]], lwd=lwd)
+    }	
+  }
+}
+plot(hc_complete,main="Hierarchical clustering with complete linkage",xlab="Clusters", sub="",labels=F)
+legend("topright",col = c("black", "green"),legend = c("Class 1 data", "Class 3 data"),lwd=1, 
+        pch=c(NA,NA))
+ClustCol(hc_complete,rbind(class1,class3)[,179],hc_complete$order,1)
+cl_complete <- cutree(hc_complete, k=2)
+```
+\hfill\break
+As the data points of two different colors are deeply mixed among each other (indicated by different color), simple clustering algorithms cannot distinguish the data.
+\hfill\break
+```{r echo=FALSE}
+t<-  table(rbind(class1,class3)[,179],cl_complete)
+rownames(t) <- c("Class 1","Class 3")
+colnames(t) <- c("Class 1","Class 3")
+t
+```
+\subsubsection{K-means for two classes}
+```{r echo=FALSE}
+t <- table(rbind(class1,class3)[,179],cl$cluster)
+rownames(t) <- c("Class 1","Class 3")
+colnames(t) <- c("Class 1","Class 3")
+t
+```
+\hfill\break
+Classical clustering algorithm fail to distinguish seizure and non seizure data even in reduced space. Hence classification which employs learning from know responses is a way out to distinguish the data.
+```{r echo=FALSE}
+# Mixed model Taking time
+# cl <- Mclust(as.data.frame(x),modelNames = "VVV")
+# table(data$y,cl$classification)
+```
+```{r echo=FALSE}
+# Classic metric scale reduction Taking time
+# d <- dist(x)
+# fit <- cmdscale(d, k=2)
+# cl1 <- kmeans(fit,centers = 5)
+# table(data$y,cl1$cluster)
+# fit1 <- isoMDS(d,y=fit, k=2)
+# cl2 <- kmeans(fit1$points,centers = 5)
+# table(data$y,cl2$cluster)
+```
+\subsection{Classification}
+\subsubsection{K-nearest neighbor (knn)}
+5-nearest neighbor classification algorithm was applied. Whole data set with 5 classes is used as training data. Then classification rules are applied on the same dataset.
+\hfill\break
+```{r echo=FALSE}
+cl <- knn(x, x, data$y>1, k=5)
+t <- table(data$y>1,cl)
+rownames(t) <- c("Class 1","Class 2-5")
+colnames(t) <- c("Class 1","Class 2-5")
+t
+```
+\hfill\break
+knn does mediocre job in establishing classification rules to distinguish seizure data and normal data. Same algorithm is applied to class 1 and class 3 data but with a slight modification. First half of the data is used as training data to classify the rest half of the data.
+\hfill\break
+```{r echo=FALSE}
+x1_train<-class1[1:1150,]
+x3_train <- class3[1:1150,]
+trainData <- rbind(x1_train,x3_train)
+x1_test<-class1[1151:2300,]
+x3_test <- class3[1151:2300,]
+testData <- rbind(x1_test,x3_test)
+new_data <- rbind(data[data$y==1,2:180],data[data$y==3,2:180])
+cl <- knn(trainData[,1:178], testData[,1:178], trainData[,179], k=5)
+t <- table(testData[,179],cl)
+rownames(t) <- c("Class 1","Class 3")
+colnames(t) <- c("Class 1","Class 3")
+t
+```
+\hfill\break
+Classification seems reasonably better than clustering. But knn is a very basic algorithm and the classification can be improved using random forest and naive Bayes algorithm. 
+\subsubsection{Random forest}
+Random Forrest is applied to class 1 and class 3 data in which first half of the data is used as training data to classify the rest half of the data.
+\hfill\break
+```{r echo=FALSE}
+rf <- randomForest(x=trainData[,1:178],y=factor(trainData[,179]),xtest = testData[,1:178])
+t <- table(testData[,179],rf$test$predicted)
+rownames(t) <- c("Class 1","Class 3")
+colnames(t) <- c("Class 1","Class 3")
+t
+```
+\hfill\break
+Prediction of random forrest is worse than knn. The same algorithm was applied to distinguish the state eyes. Class 4 represents the brain signal when eyes are closed and class 5 represents brain signals when eyes are open.
+\hfill\break
+```{r echo=FALSE}
+x4_train<-class4[1:1150,]
+x5_train <- class5[1:1150,]
+trainData <- rbind(x4_train,x5_train)
+x4_test<-class4[1151:2300,]
+x5_test <- class5[1151:2300,]
+testData <- rbind(x4_test,x5_test)
+
+
+rf <- randomForest(x=trainData[,1:178],y=factor(trainData[,179]),xtest = testData[,1:178])
+t <- table(testData[,179],rf$test$predicted)
+rownames(t) <- c("Class 4","Class 5")
+colnames(t) <- c("Class 4","Class 5")
+t
+```
+\hfill\break
+Random forest is not so bad in classifying class 4 and class 5 data.
+\section{Comments and Future work}
+In the begining of the analysis, Manova was tried on the data set to compare mean vectors belonging to each class. As it could not be applied, pair-wise Hotelling $T^2$ was applied on specific data. Even though Hotelling $T^2$ could significantly conclude that means are not equal, this was not helpful in clustering or classification. Later PCA, FA and CCA was applied so as to get the insights about the variance-covarinace matrix of the population. There were sets of variable clearly driving components in PCA. But using them for dimension reduction and do clustering could not give better results.
+\hfill\break
+\hfill\break
+Original time series data was morphed into small dimensional data. Much of the information was lost in this transformation. In future, time series analysis can be done on the original dataset. Even random forests and knn are very unsophisticated learning classification algorithms. It can be improved with Naive Bayes, SVM or neural networks. Here is a classification example of SVM on original time series data trying to classify seizure data and rest.
+\hfill\break
+```{r echo=FALSE}
+#SVM on high dimensional data
+trainOD <- rbind(o1[1:50,],o2[1:50,],o3[1:50,],o4[1:50,],o5[1:50,])
+testOD <- rbind(o1[51:100,],o2[51:100,],o3[51:100,],o4[51:100,],o5[51:100,])
+sv <- svm(trainOD[,-1],factor(trainOD[,1]>1))
+pred <- predict(sv,testOD[,-1])
+t <- table(testOD[,1]>1,pred)
+rownames(t) <- c("Class 1","Class 2-5")
+colnames(t) <- c("Class 1","Class 2-5")
+t
+```
+\hfill\break
+```{r echo=FALSE}
+# c. Naive Bayes theorem
+# cl <- naiveBayes(testData[1:178],y=factor(trainData[,179]))
+# cl_post <- predict(cl,trainData[1:178])
+# table(testData[,179],cl_post)
+# cl <- naiveBayes(x,y=factor(data$y>1))
+# cl_post <- predict(cl,x)
+# table(data$y>1,cl_post)
+```
+\hfill\break
