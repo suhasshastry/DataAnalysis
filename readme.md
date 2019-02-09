@@ -2,6 +2,9 @@
 
 This folder has reports of various data analysis projects.
 
-..* ## Epilepsy data
+## ..* Epilepsy data
 
-..* ## Absenteeism
+## ..* Absenteeism
+
+## ..* Hawkes Process
+
