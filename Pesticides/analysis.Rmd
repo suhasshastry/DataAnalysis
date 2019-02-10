@@ -1,0 +1,217 @@
+---
+title: "Analysis on Pesticides data set"
+author: "Suhas Shastry"
+date: "November 7, 2018"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(ggplot2)
+library(gridExtra)
+```
+\section{Background}
+Data set is about an experiment performed with 4 different organophosphorus pesticides and their mixtures. These pesticides are acephate (A), diazinon (B), chlorpyrifos (C) and dimethoate (D). Furthermore, two mixtures E and F are considered where the mixing ratio for E is (0.045 : 0.002 : 0.035 : 0.918) for (A: B: C: D) respectively and the mixing ratio for F is
+(0.229 : 0.011 : 0.177 : 0.583) for (A: B: C: D) respectively. The experiment is performed with different amount of doses, and the number of dead pests among the total number of pests present are reported. Below are the top 6 rows of the data.
+```{r echo=FALSE}
+data <- read.table("E:/R Workspace/Projects/Pesticides/pesticide.txt")
+names(data) <- c('pesticide','amount of dose','# of dead pests','# of pests present')
+#data[sample(1:57,6,replace = F),]
+knitr::kable(head(data))
+```
+
+Goal of this project to fit a logistic regression model for kill rate and dose of the pesticide. Probit and c log-log regressions are also explored.
+
+\section{Analysis}
+Before fitting any model, graphical representation of relationship between the dose and the kill rate are shown below. These pictures will help us decide on the type of relation that exist between dose and kill rate.
+
+```{r fig.height=3.4,fig.width=6,echo=FALSE,fig.align='center'}
+names(data) <- c('pest','dose','y','m')
+df <- as.data.frame(data)
+df[df$pest == 1,]$pest <- 'A'
+df[df$pest == 2,]$pest <- 'B'
+df[df$pest == 3,]$pest <- 'C'
+df[df$pest == 4,]$pest <- 'D'
+df[df$pest == 5,]$pest <- 'E'
+df[df$pest == 6,]$pest <- 'F'
+ggplot(df) + geom_point(aes(dose,y/m)) + facet_wrap(~pest,nrow=2,scales = "free") + xlab("Dose of pesticides") + ylab("Kill rate") + ggtitle("Relationship beteween Dose and kill rate")
+```
+                                                      
+                                                      
+From these pictures, relationship between dose and kill rate looks like curved 'S'. Hence logistic regression would be a good fit.
+
+A linear logistic regression model was fit on $kill~rate$ against $\log(1+dose)$ and pesticide $A$, $B$, $C$ and $D$. If $\beta_1$, $\beta_2$, $\beta_3$ and $\beta_4$ are the effects of pesticides $A$, $B$, $C$ and $D$ respectively, then the effect of $E$ is
+
+$$0.045\beta_1 + 0.002\beta_2 + 0.035\beta_3 + 0.918\beta_4$$ and the effect of $F$ is 
+$$0.229\beta_1 + 0.011\beta_2 + 0.177\beta_3 + 0.583\beta_4$$
+Below is the summary of the logistic model
+```{r echo=FALSE}
+data1 <- data[with(data, order(pest)), ]
+df <- data.frame(A=c(rep(1,9),rep(0,34),rep(0.045,7),rep(0.229,7)),
+    B=c(rep(0,9),rep(1,13),rep(0,21),rep(0.002,7),rep(0.011,7)),
+    C=c(rep(0,22),rep(1,11),rep(0,10),rep(0.035,7),rep(0.177,7)),
+    D=c(rep(0,33),rep(1,10),rep(0.918,7),rep(0.583,7)),
+    dose=data1$dose,rate=data1$y/data1$m)
+model1 <- glm(rate~log(1+dose)+A+B+C,df,family = binomial(link='logit'),weights = data1$m)
+summary(model1)
+```
+
+Once the regression is fit, model is evaluated using Pearson residuals plots.
+
+```{r echo=FALSE,fig.height=2.5,fig.align='center'}
+rp = resid(model1, "pearson")
+df <- data.frame(fitted = model1$fitted.values[-c(48,49)],residual = rp[-c(48,49)])
+p1 <- ggplot(df) + geom_point(aes(fitted,residual))
+qqplot.data <- function (vec) # argument: vector of numbers
+{
+  # following four lines from base R's qqline()
+  y <- quantile(vec[!is.na(vec)], c(0.25, 0.75))
+  x <- qnorm(c(0.25, 0.75))
+  slope <- diff(y)/diff(x)
+  int <- y[1L] - slope * x[1L]
+
+  d <- data.frame(resids = vec)
+
+  ggplot(d, aes(sample = resids)) + stat_qq() + geom_abline(slope = slope, intercept = int)
+
+}
+p2 <- qqplot.data(model1$residuals[-c(48,49)])
+grid.arrange(p1,p2,ncol=2)
+
+
+# par(mfrow=c(1,2))
+# plot(model1$fitted.values[-c(48,49)],rp[-c(48,49)],xlab="Fitted values",
+#      ylab="Pearson residual")
+# qqnorm(model1$residuals[-c(48,49)])
+# qqline(model1$residuals[-c(48,49)])
+```
+
+There are 2 outliers in the residual. The above plots are excluding those residuals. There is a visible curved pattern in residuals. Constant variance assumption seems to be violated.
+
+\subsection{Hypothesis of Parallelism}
+Two models, one in which the relationship is described by six parallel straight lines in the log dose model and one in which the six lines are straight but not parallel model are tested for best fit under the assumption that substances combine additively. Before comparing these models, instead of $\log(1+dose)$, $\log(\gamma + dose)$ which minimizes residual deviance is obtained by plotting residual deviance vs gamma.
+
+```{r fig.height=2.5,,fig.width=4,echo=FALSE,fig.align='center'}
+data$rate = data$y/data$m
+gamma <- seq(0.01,10,0.01)
+srr <- array()
+for(i in 1:length(gamma)){
+  srr[i] <- summary(glm(rate~log(gamma[i]+dose)+as.factor(pest),data,
+                 weights = m,family=binomial(link='logit')))$deviance
+}
+ggplot()+geom_point(aes(x=gamma,y=srr))
+```
+
+Residual deviance is minimized at $\gamma=5.62$. Hence $\log(5.62+dose)$ will be our new explanatory variable.
+
+$H_0 : Model~is~parallel$ vs $H_A : Model~is~not~parallel$
+
+Two different models were fit for above hypothesis one with interaction and the other without interaction term. Residual plot and QQ plot are drawn for both the models.
+
+```{r fig.height=3.7,echo=FALSE,fig.align='center',warning=FALSE}
+gamm <- gamma[which.min(srr)]
+model2 <- glm(rate~log(gamm+dose)+as.factor(pest),data,
+                 weights = m,family=binomial(link='logit'))
+model3 <- glm(rate~log(gamm+dose)*as.factor(pest),data,
+                 weights = m,family=binomial(link='logit'))
+rp = resid(model2, "pearson")
+p1 <- ggplot()+geom_point(aes(x=model2$fitted.values,y=rp))+
+  xlab("Fitted values") + ylab("Pearson residual") + 
+  ggtitle("Parallel line")
+p2 <- qqplot.data(model2$residuals)+ 
+  ggtitle("QQ plot")
+rp = resid(model3, "pearson")
+p3 <- ggplot()+geom_point(aes(x=model3$fitted.values,y=rp))+
+  xlab("Fitted values") + ylab("Pearson residual") + 
+  ggtitle("Non Parallel line")
+p4 <- qqplot.data(model3$residuals)+ 
+  ggtitle("QQ plot")
+grid.arrange(p1,p2,p3,p4,ncol=2,nrow=2)
+# par(mfrow=c(2,2))
+# plot(model2$fitted.values,rp,xlab="Fitted values",
+#      ylab="Pearson residual",main="Parallel line")
+# qqnorm(model2$residuals)
+# qqline(model2$residuals)
+# plot(model3$fitted.values,rp,xlab="Fitted values",
+#      ylab="Pearson residual",main="Non parallel line")
+# qqnorm(model3$residuals)
+# qqline(model3$residuals)
+```
+
+Below is the comparison of two models using Analysis of Deviance.
+
+```{r echo=FALSE}
+anova(model2,model3,test='Chisq')
+```
+
+As p value is very small, we reject null hypothesis and go with non-parallel model.
+
+\subsection{Effect of E and F}
+We test the hypothesis that the effects of E and F are greater than the
+effects when substances combine additively.
+$$ H_{01} : \beta_5 = 0.045\beta_0 +0.002\beta_2 +0.035\beta_3 + 0.918\beta_4$$
+$$ H_{A1} : \beta_5 > 0.045\beta_0 +0.002\beta_2 +0.035\beta_3 + 0.918\beta_4$$
+and
+$$ H_{02} : \beta_6 = 0.229\beta_0 +0.011\beta_2 +0.177\beta_3 + 0.583\beta_4$$
+$$ H_{A2} : \beta_6 > 0.229\beta_0 +0.011\beta_2 +0.177\beta_3 + 0.583\beta_4$$
+
+```{r echo=FALSE,warning=FALSE}
+C_vector1 <- matrix(c(-0.045,0,-0.002,-0.035,0.918,1,0,0,0,0,0,0),nrow = 1)
+C_vector2 <- matrix(c(-0.229,0, -0.011 , 0.177 ,0.583,1,0,0,0,0,0,0),nrow = 1)
+model3 <- glm(rate~log(gamm+dose)*as.factor(pest),data,
+                 weights = m,family=binomial(link='logit'))
+x <- model.matrix(model3)
+w <- diag(data$m)
+var1 <- C_vector1 %*% solve(t(x) %*% w %*% x) %*% t(C_vector1)
+var2 <- C_vector2 %*% solve(t(x) %*% w %*% x) %*% t(C_vector2)
+beta_0 <- summary(model3)$coeff[1,1]
+beta_2 <- summary(model3)$coeff[3,1]
+beta_3 <- summary(model3)$coeff[4,1]
+beta_4 <- summary(model3)$coeff[5,1]
+beta_5 <- summary(model3)$coeff[6,1]
+beta_6 <- summary(model3)$coeff[7,1]
+t1 <- (beta_5 - 0.045*beta_0 -0.002*beta_2 -0.035*beta_3 - 0.918*beta_4)/sqrt(var1)
+#t1
+
+t2 <- (beta_6 - 0.229*beta_0 -0.011*beta_2 -0.177*beta_3 - 0.583*beta_4)/sqrt(var2)
+#t2
+df = data.frame(test=c(1,2),test_statistic = c(t1,t2),critical_value=c(qt(0.95,11)),
+                p_value = c(pt(t1,11),pt(t2,11)))
+#qt(0.95,11)
+knitr::kable(df)
+```
+
+We reject null in both the cases and conclude that effects of E and F are greater than the effects when substances combine additively,
+
+\subsection{Alternative models}
+Other link functions like probit link function and complementary log-log function are fitted for pesticides data.
+
+```{r fig.height=2.5,echo=FALSE,warning=FALSE}
+#probit
+model4 <- glm(rate~log(gamm+dose)*as.factor(pest),data,
+                 weights = m,family=binomial(link='probit'))
+rp = resid(model4, "pearson")
+df <- data.frame(fitted = model4$fitted.values,residual = rp)
+p1 <- ggplot(df) + geom_point(aes(fitted,residual))+ 
+  ggtitle("Probit link")
+p2 <- qqplot.data(model4$residuals) + ggtitle("QQ plot")
+grid.arrange(p1,p2,ncol=2)
+```
+
+```{r fig.height=2.8,echo=FALSE,warning=FALSE}
+#c log log
+model5 <- glm(rate~log(gamm+dose)*as.factor(pest),data,
+                 weights = m,family=binomial(link='cloglog'))
+rp = resid(model5, "pearson")
+df <- data.frame(fitted = model5$fitted.values,residual = rp)
+p1 <- ggplot(df) + geom_point(aes(fitted,residual)) + 
+  ggtitle("c log-log link")
+p2 <- qqplot.data(model5$residuals) + ggtitle("QQ plot")
+grid.arrange(p1,p2,ncol=2)
+```
+
+AIC for logit model is `r round(summary(model3)$aic,3)` and for Probit model is `r round(summary(model4)$aic,3)`. For c-loglog model AIC is `r round(summary(model5)$aic,3)`. Of all the models, c-loglog model fares better.
+
+\subsection{Conclusion}
+Pest kill rate is regressed on $\log(\gamma + dose)$ and its interaction 6 different types of pesticide. Logistic regression with 6 lines model is a good fit for pesticides data. Among all the pesitcides, $E$ is more effective than the rest.
+
