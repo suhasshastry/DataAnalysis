@@ -14,3 +14,8 @@ Hawkes process was modeled on Chicago burglary dataset by maximizing the log lik
 An explorative data analysis was done on Epilepsy data. This project was done using Rmarkdown.
 
 #### [Report on Epilepsy data analysis](https://github.com/suhasshastry/DataAnalysis/blob/master/Epilepsy/epilepsy.pdf)
+
+## Pesticides data
+Logistic, probit and c log-log regression models were fit on this data to test the effect of different pesticides.
+
+#### [Report on Pesticides data analysis](https://github.com/suhasshastry/DataAnalysis/blob/master/Pesticides/analysis.pdf)
