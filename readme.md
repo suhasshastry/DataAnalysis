@@ -19,3 +19,8 @@ An explorative data analysis was done on Epilepsy data. This project was done us
 Logistic, probit and c log-log regression models were fit on this data to test the effect of different pesticides.
 
 #### [Report on Pesticides data analysis](https://github.com/suhasshastry/DataAnalysis/blob/master/Pesticides/analysis.pdf)
+
+## Bayesian ETAS
+Japan earthquake catalog was declustered using bayesian version of ETAS declustering model.
+
+#### [Report on Bayesian ETAS](https://github.com/suhasshastry/DataAnalysis/blob/master/Bayesian%20ETAS/report.pdf)
