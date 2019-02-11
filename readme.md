@@ -1,5 +1,5 @@
 # Data analysis
-This repo has various data analysis projects. Below is the list of projects along with the links to their report.
+This repo has various data analysis projects. Below is the list of projects along with the links to their reports.
 ## Absenteeism
 This project is about visualization of data set on Absenteeism at work. This project was done as a Jupyter Notebook using libraries numpy, pandas, matplotlib and plotly.
 
