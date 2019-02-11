@@ -11,7 +11,7 @@ Hawkes process was modeled on Chicago burglary dataset by maximizing the log lik
 #### [Report on Hawkes Process](https://github.com/suhasshastry/DataAnalysis/blob/master/Hawkes%20process/report/hawkes_report.pdf)
 
 ## Epilepsy data
-An explorative data analysis was done on Epilepsy data. This project was done in Rmarkdown.
+An explorative data analysis using clustering and classification techniques was done on Epilepsy data. This project was done in Rmarkdown.
 
 #### [Report on Epilepsy data analysis](https://github.com/suhasshastry/DataAnalysis/blob/master/Epilepsy/epilepsy.pdf)
 
