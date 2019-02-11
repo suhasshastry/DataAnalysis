@@ -11,16 +11,16 @@ Hawkes process was modeled on Chicago burglary dataset by maximizing the log lik
 #### [Report on Hawkes Process](https://github.com/suhasshastry/DataAnalysis/blob/master/Hawkes%20process/report/hawkes_report.pdf)
 
 ## Epilepsy data
-An explorative data analysis was done on Epilepsy data. This project was done using Rmarkdown.
+An explorative data analysis was done on Epilepsy data. This project was done in Rmarkdown.
 
 #### [Report on Epilepsy data analysis](https://github.com/suhasshastry/DataAnalysis/blob/master/Epilepsy/epilepsy.pdf)
 
 ## Pesticides data
-Logistic, probit and c log-log regression models were fit on this data to test the effect of different pesticides.
+Logistic, probit and c log-log regression models were fit on this data to test the effect of different pesticides. This project was done in Rmarkdown.
 
 #### [Report on Pesticides data analysis](https://github.com/suhasshastry/DataAnalysis/blob/master/Pesticides/analysis.pdf)
 
 ## Bayesian ETAS
-Japan earthquake catalog was declustered using bayesian version of ETAS declustering model.
+Japan earthquake catalog was declustered using bayesian version of ETAS declustering model. This project was done in Rmarkdown.
 
 #### [Report on Bayesian ETAS](https://github.com/suhasshastry/DataAnalysis/blob/master/Bayesian%20ETAS/report.pdf)
