@@ -24,3 +24,8 @@ Logistic, probit and c log-log regression models were fit on this data to test t
 Japan earthquake catalog was declustered using bayesian version of ETAS declustering model. This project was done in Rmarkdown.
 
 #### [Report on Bayesian ETAS](https://github.com/suhasshastry/DataAnalysis/blob/master/Bayesian%20ETAS/report.pdf)
+
+## Hidden Markov Models in Time series
+2 state Hidden Markov Model was explored on mixed model of stock market indicies of BRICS countries. This project was done in Rmarkdown.
+
+#### [Report on HMM in Time series](https://github.com/suhasshastry/DataAnalysis/blob/master/HMM/report.pdf)
