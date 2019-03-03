@@ -1,0 +1,1 @@
+FIFA 2019 dataset contains attributes of football players and was obtained from [here](https://www.kaggle.com/karangadiya/fifa19). This data set was visualized using Tableau [dashboard](https://public.tableau.com/profile/suhas.shastry#!/vizhome/FIFA_15515893209100/Dashboard1?publish=yes). 
