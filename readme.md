@@ -4,6 +4,9 @@ This repo has various data analysis projects. Below is the list of projects alon
 ### [Epilepsy data](https://github.com/suhasshastry/DataAnalysis/blob/master/Epilepsy/epilepsy.pdf)
 An explorative data analysis was done on Epilepsy data to analyze seizure pattern using clustering and classification techniques. PCA, Factor analysis, Machine Learning algorithms like Hierarchical clustering, K-Means clustering, KNN classification and Random Forest were implemented for this data set.
 
+### [FIFA 2019](https://github.com/suhasshastry/DataAnalysis/blob/master/FIFA/readme.md)
+Players attributes are visualized using Tableau [dashboard](https://public.tableau.com/profile/suhas.shastry#!/vizhome/FIFA_15515893209100/Dashboard1?publish=yes)
+
 ### [Absenteeism](https://nbviewer.jupyter.org/github/suhasshastry/DataAnalysis/blob/master/absenteeism/absenteeism.ipynb)
 Absenteeism at work dataset is a collection of demographic data of employees in a Brazil firm who were absent for work. Various relationships are visualized interactively using Python libraries. This is implemented as a Jupyter Notebook.
 
