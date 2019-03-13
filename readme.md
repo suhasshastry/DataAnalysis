@@ -1,8 +1,7 @@
 # Data analysis
 This repo has various data analysis projects. Below is the list of projects along with the links to their reports.
 
-### Epilepsy data
-[report](https://github.com/suhasshastry/DataAnalysis/blob/master/Epilepsy/epilepsy.pdf)
+### [Epilepsy data](https://github.com/suhasshastry/DataAnalysis/blob/master/Epilepsy/epilepsy.pdf)
 
 An explorative data analysis was done on Epilepsy data to analyze seizure pattern using clustering and classification techniques. PCA, Factor analysis, Machine Learning algorithms like Hierarchical clustering, K-Means clustering, KNN classification and Random Forest were implemented for this data set.
 
@@ -11,6 +10,10 @@ Players attributes are visualized using Tableau [dashboard](https://public.table
 
 ### [Absenteeism](https://nbviewer.jupyter.org/github/suhasshastry/DataAnalysis/blob/master/absenteeism/absenteeism.ipynb)
 Absenteeism at work dataset is a collection of demographic data of employees in a Brazil firm who were absent for work. Various relationships are visualized interactively using Python libraries. This is implemented as a Jupyter Notebook.
+
+### [Spatial data analyis of Parana State’s average rainfall](https://github.com/suhasshastry/DataAnalysis/blob/master/Parana%20rainfall/report.pdf)
+Average rainfall over different years for the period May-June (dry-season) was collected at 143 recording
+stations located at different places in Parana State, Brasil. Spatial analysis was employed to predict the rainfall across the state.
 
 ### [Hawkes Process](https://github.com/suhasshastry/DataAnalysis/blob/master/Hawkes%20process/report/hawkes_report.pdf)
 Chicago burglary data was modeled using Hawkes process. KS test was done on the simulated Hawkes process data and
