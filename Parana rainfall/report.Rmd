@@ -1,0 +1,100 @@
+---
+title: "Spatial data analyis of Parana State's average rainfall"
+author: "Suhas Shastry"
+date: "March 10, 2019"
+output: pdf_document
+---
+
+```{r setup, include=FALSE,warning=FALSE}
+knitr::opts_chunk$set(echo = TRUE,fig.pos='h')
+library(geoR)
+library(gstat)
+library(sf)
+library(raster)
+library(ggplot2)
+data(parana)
+library(spatstat)
+library(raster)
+library(gridExtra)
+```
+
+\subsection*{Introduction}
+Average rainfall over different years for the period May-June (dry-season) was collected at 143 recording stations located at different places in Parana State, Brasil. Below is the graphical analysis of the rainfall data. From data vs X coord scatter plot, we can infer that as we move to the eastern parts of state, average rainfall decreases. From Y coord vs data scatter plot, we can infer that as we move to the northern parts of state, average rainfall decreases. Rainfall is heavier in south-western parts compared to north-eastern parts.
+
+```{r fig.height=3.5,include=FALSE,warning=FALSE}
+model <- lm(data~east*north,parana)
+s <- summary(model)
+df <- data.frame(x = parana$coords[,1],y = parana$coords[,2],data = model$residuals)
+```
+
+```{r echo=FALSE,fig.height=3,fig.width=10}
+df1 <- parana
+df1$data <- model$residuals
+#par(mar = c(1,1,1,1) + 0.1)
+p1 <- ggplot()+geom_point(mapping=aes(x=parana$coords[,1],y=parana$coords[,2]),size = parana$data/100)+
+  geom_polygon(mapping=aes(x=parana$borders[,1],y=parana$borders[,2]),color='black',fill=NA)+theme_bw()+xlab("East")+ylab("North")
+p2 <- ggplot()+geom_point(mapping=aes(x=parana$coords[,1],y=parana$data))+theme_bw()+xlab("East")+ylab("Rainfall")
+p3 <- ggplot()+geom_point(mapping=aes(x=parana$data,y=parana$coords[,2]))+theme_bw()+xlab("Rainfall")+ylab("North")
+grid.arrange(p1,p2,p3, ncol=3)
+```
+
+\subsection*{Regression Analysis}
+A linear regression model was fit with rainfall as response and distance along east direction, distance along north direction and their interaction as explanatory variables.
+$$rainfall = \beta_0 + \beta_1 x_{E}+\beta_2x_N +\beta_3(x_E*x_N) +\epsilon $$
+Below are the co-efficients and the p values indicating their significance.
+
+```{r echo=FALSE}
+knitr::kable(s$coefficients)
+```
+
+As inferred from the plot, east and north co-efficients are significant and negative. Surprisingly interaction effect is positive yet negligibly small.
+
+\subsection*{Spatial Analysis}
+As location paramaters are significant predictors of rainfall, exponential covaraince function of the form given below was fit to the spatial data.
+$$C(\textbf{x},\textbf{x}+h) = \tau^2 + \sigma^2e^{-\lambda h}  $$
+
+```{r include=FALSE,warning=FALSE}
+h <- seq(0,300,10)
+variog_data <- variog(as.geodata(df), uvec = h)
+v_fit = variofit(variog_data, weights = "npairs",
+         cov.model= "exponential",ini.cov.pars = c(1,1))
+
+ml <- likfit(as.geodata(df),
+fix.kappa=T, kappa=.5, lik.method="REML",
+fix.nugget=FALSE, cov.model="exponential", nugget=.15, 
+ini.cov.pars=c(.05,1))
+coefs <- data.frame(Coefficients = c('tau-sq','sigma-sq','lambda'),
+                    Estimates = round(c(391.56,793.17,1/199.359),2))
+```
+
+```{r echo=FALSE}
+knitr::kable(coefs)
+```
+
+The estimators for the covariance function are calculated using MLE which are given in the above table. Below is the plot of exponential variogram model fitted on the spatial variance.
+
+```{r echo=FALSE,fig.height=2.5,fig.width=5,fig.align='center',fig.pos='h'}
+par(mar = c(2,2,1,1) + 0.1)
+plot(variog_data,main="Exponential variogram model")
+lines.variomodel(cov.model = "exponential", cov.pars = ml$cov.pars, nugget 
+= ml$nugget, max.dist = max(h), kappa=ml$kappa)
+```
+
+```{r include=FALSE,warning=FALSE}
+k.c <- krige.control(obj.model = ml)
+o.c <- output.control(simulations.predictive = 1000,n.predictive = 10000,
+                      quantile = c(0.1,0.25,0.5,0.75,0.9),threshold = 350)
+parana$grid <- pred_grid(parana$borders, by =15)
+kc <- krige.conv(parana,loc=parana$grid,krige = k.c,output = o.c)
+```
+
+This exponential covaraince function was used for kriging across the state. Predicted values of average rainfall along the state is plotted below.
+
+```{r echo=FALSE,fig.height=3,fig.width=5,fig.align='center'}
+par(mar = c(2,2,1,1) + 0.1)
+image(kc,main="Kriging of rainfall across the state",col=terrain.colors(20),
+      x.leg=c(500,750),y.leg=c(0,50))
+```
+
+\subsection*{Conclusion}
+Dataset has 143 entries of average rainfall across the state. Initally a linear regression model helped us to infer that location parameters are significant predictors of rainfall. This analysis was extended by employing spatial statistics. Exponential variogram was a good fit to explain the spatial covariance. Finally kriging was applied to predict the rainfall across the state.
