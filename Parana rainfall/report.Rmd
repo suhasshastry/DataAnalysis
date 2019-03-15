@@ -71,11 +71,11 @@ coefs <- data.frame(Coefficients = c('tau-sq','sigma-sq','lambda'),
 knitr::kable(coefs)
 ```
 
-The estimators for the covariance function are calculated using MLE which are given in the above table. Below is the plot of exponential variogram model fitted on the spatial variance.
+The estimators for the covariance function are calculated using MLE which are given in the above table. Below is the plot of exponential covariance model fitted on the spatial variance.
 
 ```{r echo=FALSE,fig.height=2.5,fig.width=5,fig.align='center',fig.pos='h'}
 par(mar = c(2,2,1,1) + 0.1)
-plot(variog_data,main="Exponential variogram model")
+plot(variog_data,main="Exponential covariance model")
 lines.variomodel(cov.model = "exponential", cov.pars = ml$cov.pars, nugget 
 = ml$nugget, max.dist = max(h), kappa=ml$kappa)
 ```
@@ -97,4 +97,4 @@ image(kc,main="Kriging of rainfall across the state",col=terrain.colors(20),
 ```
 
 \subsection*{Conclusion}
-Dataset has 143 entries of average rainfall across the state. Initally a linear regression model helped us to infer that location parameters are significant predictors of rainfall. This analysis was extended by employing spatial statistics. Exponential variogram was a good fit to explain the spatial covariance. Finally kriging was applied to predict the rainfall across the state.
+Dataset has 143 entries of average rainfall across the state. Initally a linear regression model helped us to infer that location parameters are significant predictors of rainfall. This analysis was extended by employing spatial statistics. Exponential covariance was a good fit to explain the spatial covariance. Finally kriging was applied to predict the rainfall across the state.
