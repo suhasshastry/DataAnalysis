@@ -1,0 +1,402 @@
+---
+title: "Spatial analysis of Dinner Restaurants in Bangalore"
+author: "Suhas Shastry"
+date: "March 21, 2019"
+output: pdf_document
+urlcolor: blue
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(sp)
+library(ggplot2)
+library(plyr)
+```
+
+```{r include=FALSE}
+data.shape<-rgdal::readOGR("E:/OSU/Assignments/567/project/bangalore/Dinner/bang.shp")
+W <- dget("E:/OSU/Assignments/567/project/bangalore/Dinner/proximity")
+bang_df <- read.csv("E:/OSU/Assignments/567/project/bangalore/Dinner/restraunt_summary.csv")
+#For plotting
+restraunt <- read.csv("E:/OSU/Assignments/567/project/bangalore/Dinner/restraunt_list.csv")
+restraunt <- as.data.frame(restraunt)
+```
+
+```{r include=FALSE}
+# not_W = poly2nb(data.shape, queen=TRUE, row.names=data.shape$WARD_NAME)
+# W = matrix(rep(0, 198*198),ncol=198)
+# for(i in 1:198){
+#   for(j in 1:length(not_W[i][[1]])){
+#     W[i,not_W[i][[1]][j]]=1
+#   }
+# }
+
+```
+
+```{r include =FALSE}
+# flag = rep(0,dim(restraunt)[1])
+# map_df <- fortify(data.shape)
+# map_df$id = as.numeric(map_df$id)+1
+# for(i in 1:dim(restraunt)[1]){
+#   for(j in 1:198){
+#     if(point.in.polygon(restraunt[i,]$Venue.Latitude,restraunt[i,]$Venue.Longitude,map_df[map_df$id==j,]$lat,map_df[map_df$id==j,]$long, mode.checked=FALSE)){
+#       flag[i]=1
+#     bang_df[j,]$rest_count = bang_df[j,]$rest_count + 1
+#     }
+#   }
+# }
+# rest <- restraunt[as.logical(flag),]
+# write.csv(as.data.frame(rest),"E:/OSU/Assignments/567/project/bangalore/project/rest.csv",row.names = FALSE)
+```
+
+\subsection*{Introduction}
+\subsubsection*{Background}
+This project is a spatial point process analysis of all the dinner restaurant in Bangalore. Bangalore political map in `geoJSON` format was obtained from [__Data{Meet}__](https://raw.githubusercontent.com/datameet/Municipal_Spatial_Data/master/Bangalore/BBMP.GeoJSON) community. This data has boundary information of 198 wards in Bangalore along with population and area of each ward.
+
+Using this ward information, all the dinner restaurants in these wards were collected from __[Foursquare](https://developer.foursquare.com/)__ using their APIs.
+
+\subsubsection*{Data Modification}
+Restaurants details obtained from Foursquare contained duplicates. Once they were removed, 1405 different dinner restaurants' details was retained. These restaurants belonged to different wards but the exact information to which ward it belongs to is unknown. This information was obtained using `point.in.polygon` function in R. Finally proximity matrix for 198 wards is required for spatial analysis. Proximity matrix was prepared using First Order Queen Contiguity. FOQ contiguity defines a neighbor when at least one point on the boundary of one polygon is shared with at least one point of its neighbor (common border or corner). 
+
+\subsection*{Analysis}
+
+Before we do any analysis, we plot all 1405 restaurants in Bangalore in Figure 1.
+
+```{r echo=FALSE,fig.align='center',fig.height=4}
+data.shape$id = 1:198
+bang.points <- fortify(data.shape,region='id')
+bang.df <- join(bang.points, data.shape@data, by="id")
+df1 <- data.frame(x = restraunt$Venue.Longitude, y = restraunt$Venue.Latitude)
+ggplot() +
+  geom_polygon(data=bang.df,mapping = aes(long,lat,group=group,fill=NA)) +
+  geom_path(data=bang.df,mapping =aes(long,lat,group=group),
+            color="black",size=.3) +
+  coord_equal() +
+  scale_fill_brewer("Si")+
+  geom_point(data=restraunt,aes(x=Venue.Longitude,y=Venue.Latitude),color='brown1',size=1)+
+  xlab("Longitude")+
+  ylab("Latitude")+
+  ggtitle("Figure 1. Point plot of dinner restruants in Bangalore")+
+  theme(axis.line=element_blank(),
+      axis.text.x=element_blank(),
+      axis.text.y=element_blank(),
+      axis.ticks=element_blank(),
+      axis.title.x=element_blank(),
+      axis.title.y=element_blank(),
+      panel.background=element_blank(),
+      panel.border=element_blank(),
+      panel.grid.major=element_blank(),
+      panel.grid.minor=element_blank(),
+      plot.background=element_blank(),
+      plot.title = element_text(hjust = 0.5))
+s <- summary(lm(rest_count~lat+lon+pop+area,bang_df))
+s1 <- AIC(glm(rest_count~lat+lon+pop+area,bang_df,family='poisson'))
+```
+
+Restaurants are concentrated in central and southern parts of Bangalore. There are many wards in Eastern Bangalore without a single dinner restaurant within them. Factors that might affect the number of restaurants in a ward are location of the ward, population in that ward, area of that ward. Based on these factors, we fit a simple linear regression model of the form, $y = \textbf{X}^T\beta + \epsilon$. This model has $R^2$ value of `r round(s$r.squared,3)` and AIC of `r round(AIC(lm(rest_count~lat+lon+pop+area,bang_df)),3)` which reflects the poor explanation by a linear model. We even tried Poisson regression model of the form, 
+$$\eta_i = \log \lambda_i = \textbf{x}_i^T\beta + \epsilon_i$$
+where $\lambda_i$ is the rate parameter in ward $i$ for $i=1,\dots,198$ and $\epsilon_i$ is the error. This performs worse than linear model with AIC `r round(s1,3)`. Hence we explored spatial analysis for the data under consideration.
+
+\subsubsection*{Spatial Poisson regression model}
+Let $y_i$ be the number of restaurants in each ward, then $y_i \sim Poisson(\lambda_i)$. We explored spatial Poisson regression model of the form,
+$$\eta_i = \log \lambda_i = \textbf{x}_i^T\beta + \psi_i + \epsilon_i$$
+Here $\lambda_i$ is the rate parameter of each ward, $\psi_i$ is the spatial random effect and $\epsilon_i$ is the spatial effect. We consider a hierarchical model for the above regression model. That is, $\beta \sim N\big(\mu,\kappa_1^{-1}(X^TX)^{-1}\big)$, $\psi \sim N\big(0,\kappa_2^{-1} Q^{-} \big)$ and $\epsilon \sim N\big(0,\kappa_3^{-1}I\big)$. We assume that newly introduced $\kappa_1$, $\kappa_2$ and $\kappa_3$ are i.i.d $Gamma(a,b)$ random variables. We know 198 $y_i$s and \textbf{X} matrix, but the unknown parameters are 4 $\beta$'s, 198 $\psi_i$'s, 198 $\eta_i$'s and $\kappa_1$, $\kappa_2$ and $\kappa_3$. Totally there 403 unknown parameters that are to be estimated with known 198 values. We proceed to this estimation using Gibbs sampling.
+
+\subsubsection*{Gibbs sampling}
+Gibbs sampling is a Markov chain Monte Carlo (MCMC) algorithm for obtaining a sequence of observations which are approximated from a specified multivariate probability distribution, when direct sampling is difficult. In our problem, we know values of $y$ and $\textbf{X}$. We want to estimate values of $\eta$, $\beta$, $\psi$, $\kappa_1$, $\kappa_2$ and $\kappa_3$. We use the Bayesian approach to estimate the joint distribution of all these parameters given data.
+
+$$ \pi(\eta,\beta, \psi,\kappa_1, \kappa_2,\kappa_3|y,\textbf{X})$$
+By law of total probability, this joint distribution is the product of all marginal distributions.
+$$\pi(\eta,\beta, \psi,\kappa_1, \kappa_2,\kappa_3|y,\textbf{X}) = \pi(\eta|\beta, \psi,\kappa_1, \kappa_2,\kappa_3,y,\textbf{X}) \pi(\beta | \kappa_1,y,\textbf{X})\pi(\psi|\kappa_2,y,\textbf{X})\pi(\kappa_1)\pi(\kappa_2)\pi(\kappa_3)$$
+
+These individual marginal distributions can be simulated from the known distributions using Gibbs sampling.
+
+\subsection*{Simulation}
+Joint distribution was simulated with initial estimates for $a=1$ and
+$b=0.005$. $\beta^{(0)}$ was taken from linear regression model. 5000 simulations were run 1000 burn in period. 
+
+```{r echo=FALSE}
+y=bang_df$rest_count
+
+X = bang_df[,c('lat','lon','pop','area')]
+mu_bar = beta = c(47.036295432, 64.547316870,  0.004903397, -0.007098740)
+X = as.matrix(X)
+loge = log(X %*% beta)
+W=diag(rowSums(W))-W
+burnin=1000
+N=5000
+n=198
+p=4
+len=(N-burnin)
+lambda=matrix(0,nrow=len,ncol=3)
+meta=matrix(0,nrow=len,ncol=n)
+msi=matrix(0,nrow=len,ncol=n)
+mbeta=matrix(0,nrow=len,ncol=p)
+lam=c(0,0,0)
+lamy=200
+lamsi=200
+lamb=200
+a=1
+b=.005
+si=rep(0,n)
+z=loge
+for(r in 1:N){
+  ## update eta
+  zp=si + loge + rnorm(n)/sqrt(lamy)
+  fact= exp( -exp(zp) + exp(z) + (zp-z)*y )
+  uf=runif(n)
+  z[which((uf-fact) < 0)]=zp[which( (uf-fact) < 0 )]
+  # update lam-epsilon
+  quad=crossprod((z-si-loge))
+  r1=a+n/2
+  r2=b+quad/2
+  lamy=rgamma(1,shape=r1,rate=r2)
+  # update lam-psi
+  quad=t(si)%*% W %*% si
+  r1=a+n/2
+  r2=b+quad/2
+  lamsi=rgamma(1,shape=r1,rate=r2)
+  #update lam-beta
+  quad=t(beta)%*% solve(t(X)%*%X) %*% beta
+  r1=a+n/2
+  r2=b+quad/2
+  lamb=rgamma(1,shape=r1,rate=r2)
+  # update si
+  si=rnorm(n)
+  Qsi=lamy*diag(1,n,n) + lamsi* W
+  Qsiin=solve(Qsi)
+  mu=lamy*Qsiin %*% (z-loge)
+  R=chol(Qsiin)
+  si=mu + t(R)%*%si
+  #beta
+  # beta=rnorm(p)
+  # QQin <- solve((t(X)%*%X))
+  # mu_bar = mu_bar + lamb*QQin %*% (beta-mu_bar)
+  # R=chol(QQin)
+  # beta=mu_bar + t(R)%*%beta
+  beta=rnorm(p)
+ # mu_bar = mu_bar + lamb *solve(t(X)%*%X) %*% (mu_bar)
+  R=chol(solve(t(X)%*%X))
+  mu_bar=mu_bar + 1/sqrt(lamb)*t(R)%*%beta
+  
+  
+  ind=r-burnin
+  # store simulations
+  if(ind > 0 ){
+    lambda[ind,]=c(lamb,lamsi,lamy)
+    meta[ind,]=z
+    msi[ind,]=si
+    mbeta[ind,]=mu_bar
+  }
+}
+#######
+eta=si=rep(0,n)
+lam=rep(0,3)
+beta = rep(0,p)
+for(j in 1:n)   eta[j]=sum(meta[,j])/len
+for(j in 1:n)   si[j]=sum(msi[,j])/len
+for(j in 1:p)   beta[j]=sum(mbeta[,j])/len
+for(j in 1:3)   lam[j]=sum(lambda[,j])/len
+```
+```{r echo=FALSE,fig.height=2,fig.width=9}
+df2 <- data.frame(lambda,len = 1:len)
+names(df2) <- c('beta1','psi1','eps1','len')
+p1 <- ggplot(df2)+
+  geom_line(aes(x=len,y=beta1))+
+  theme_bw()+
+  xlab("Kappa 1")+
+  ylab("")
+p2 <- ggplot(df2)+
+  geom_line(aes(x=len,y=psi1))+
+  theme_bw()+
+  xlab("Kappa 2")+
+  ylab("")
+p3 <- ggplot(df2)+
+  geom_line(aes(x=len,y=eps1))+
+  theme_bw()+
+  xlab("Kappa 3")+
+  ylab("")
+gridExtra::grid.arrange(p1,p2,p3,ncol=3,top="Figure 2. Simulated values of Kappa")
+```
+
+Figure 2. indicates the simulated values of $\kappa$'s. Almost all three of them stabilize in the long run. 
+
+```{r echo=FALSE,fig.height=4,fig.width=8}
+df1 <- data.frame(mbeta,len = 1:len)
+names(df1) <- c('lat','lon','pop','area','len')
+p1 <- ggplot(df1)+
+  geom_line(aes(x=len,y=lat))+
+  theme_bw()+
+  xlab("Simulation")+
+  ylab("Coefficient of Latitude")
+p2 <- ggplot(df1)+
+  geom_line(aes(x=len,y=lon))+
+  theme_bw()+
+  xlab("Simulation")+
+  ylab("Coefficient of Longitude")
+p3 <- ggplot(df1)+
+  geom_line(aes(x=len,y=pop))+
+  theme_bw()+
+  xlab("Simulation")+
+  ylab("Coefficient of Population")
+p4 <- ggplot(df1)+
+  geom_line(aes(x=len,y=area))+
+  theme_bw()+
+  xlab("Simulation")+
+  ylab("Coefficient of Area")
+gridExtra::grid.arrange(p1,p2,p3,p4,ncol=2,top='Figure 3. Simulated values of beta')
+```
+
+Figure 3. indicates the simulated values of 4 different $\beta$'s. There is a trend in almost all four of them. This could be overcome by simulating for long time. But for now, we are considering average of these values for interpretation.
+
+```{r echo=FALSE,warning=FALSE,fig.height=3.5,message=FALSE}
+ bang.df$si = rep(0,dim(bang.df)[1])
+bang.df$eps = rep(0,dim(bang.df)[1])
+bang.df$eta = rep(0,dim(bang.df)[1])
+eps <- eta-loge-si
+#si1 <- data.frame(si = si,eps=,id=1:198)
+for(i in 1:198){
+  bang.df[bang.df$id == i,]$si = c(rep(si[i],dim(bang.df[bang.df$id==i,])[1]))
+  bang.df[bang.df$id == i,]$eps = c(rep(eps[i],dim(bang.df[bang.df$id==i,])[1]))
+  bang.df[bang.df$id == i,]$eta = c(rep(eta[i],dim(bang.df[bang.df$id==i,])[1]))
+}
+ggplot(data=bang.df,mapping = aes(long,lat,group=group,fill=si)) +
+geom_polygon() +
+  geom_path(size=0.3) +
+  coord_equal() +
+  scale_fill_brewer("Spatial effect")+
+  scale_fill_gradient(low = "pink", high = "black")+
+  theme(axis.line=element_blank(),
+      axis.text.x=element_blank(),
+      axis.text.y=element_blank(),
+      axis.ticks=element_blank(),
+      axis.title.x=element_blank(),
+      axis.title.y=element_blank(),
+      panel.background=element_blank(),
+      panel.border=element_blank(),
+      panel.grid.major=element_blank(),
+      panel.grid.minor=element_blank(),
+      plot.background=element_blank(),
+      plot.title = element_text(hjust = 0.5))+
+  ggtitle("Figure 4. Spatial effect in the data")
+```
+
+Figure 4 indicates the spatial effect in the data. Spatial effect is high in central and southern parts of Bangalore which is in correlation with density of restaurants. Eastern parts of Bangalore have very low spatial effect. Figure 5. indicates the residual effect. Residual is close to zero in all most all the wards. Residual is bit high in the wards which have very high or very low restaurants compared to their neighboring wards.
+
+```{r echo=FALSE,warning=FALSE,fig.height=3.5,message=FALSE}
+ggplot(data=bang.df,mapping = aes(long,lat,group=group,fill=eps)) +
+geom_polygon() +
+  geom_path(size=0.3) +
+  coord_equal() +
+  scale_fill_brewer("Spatial effect")+
+  scale_fill_gradient(low = "darkolivegreen3", high = "black")+
+  theme(axis.line=element_blank(),
+      axis.text.x=element_blank(),
+      axis.text.y=element_blank(),
+      axis.ticks=element_blank(),
+      axis.title.x=element_blank(),
+      axis.title.y=element_blank(),
+      panel.background=element_blank(),
+      panel.border=element_blank(),
+      panel.grid.major=element_blank(),
+      panel.grid.minor=element_blank(),
+      plot.background=element_blank(),
+      plot.title = element_text(hjust = 0.5))+
+  ggtitle("Figure 5. Residual effect")
+#gridExtra::grid.arrange(p1,p2,ncol=2)
+```
+
+
+```{r echo=FALSE,warning=FALSE,fig.height=3.5,message=FALSE}
+ ggplot(data=bang.df,mapping = aes(long,lat,group=group,fill=eta)) +
+geom_polygon() +
+  geom_path(size=0.3) +
+  coord_equal() +
+  scale_fill_brewer("Spatial effect")+
+  scale_fill_gradient(low = "cadetblue2", high = "black")+
+  theme(axis.line=element_blank(),
+      axis.text.x=element_blank(),
+      axis.text.y=element_blank(),
+      axis.ticks=element_blank(),
+      axis.title.x=element_blank(),
+      axis.title.y=element_blank(),
+      panel.background=element_blank(),
+      panel.border=element_blank(),
+      panel.grid.major=element_blank(),
+      panel.grid.minor=element_blank(),
+      plot.background=element_blank(),
+      plot.title = element_text(hjust = 0.5))+
+  ggtitle("Figure 6. Rate parameter eta")
+```
+
+Figure 6. indicates the estimated log of rate parameters for different wards. As expected, rates are very low in eastern wards and very high in central and southern wards.
+
+\subsection*{Conclusion}
+We considered details of 1405 restaurants in Bangalore and divided it into 198 wards. Each restaurant was considered as a point process. Initially, linear regression model and Poisson regression model were fit. As these models failed to explain the variation, we fit spatial Poisson regression model. Because we had more unknown paramters, we used Gibbs sampling to estimate all these paramters. Based on these simulated estimates we plotted spatial, residual effects for each ward and also we displayed log of rate parameter for each of the ward. 
+
+
+
+
+```{r echo=FALSE, include=FALSE}
+###########
+## Show the map again of the log SMR
+plot.poly <- function (xx.polylist, aux.var, intervals,
+                       legend.x, legend.y, ...) {
+  ## ======================================================================
+  ## Plotting spatial polygons, with an auxiliary variable 'aux.var',
+  ## broken down by the 'intervals'.
+  ## ======================================================================
+  
+  if (missing(aux.var)) {
+    print("nonsense")
+    plot(xx.polylist, ...)
+    ##forcefill=FALSE, ...)
+  }
+  else {
+    cols <- hcl(c=255,l=10,alpha=seq(0.2, 0.8, length=length(intervals)))
+    
+    the.cols <- cols[findInterval(aux.var, intervals)]
+    plot(xx.polylist, col=the.cols, ...)
+    
+    ys <- sort(seq(legend.y[1], legend.y[2], len=length(intervals)))
+    
+    image(range(legend.x), ys,
+          rbind(intervals, intervals), col=cols, add=T)
+    
+    text(min(legend.x), ys, intervals, pos=2, cex=0.9)
+  }
+  
+  invisible()
+}
+
+par(mfrow=c(1,1), cex=0.75, mar=c(3,3,3,3), mgp=c(2,0.5,0), bty="L")
+plot(0, 0, type="n", xaxt="n", yaxt="n", xlab="", ylab="", main="residual 
+     effects",
+     xlim=c(77.4, 77.85), ylim=c(12.85, 13.15))
+plot.poly(data.shape, eta-loge-si, seq(-1, 1, 1),
+          legend.x=c(0, 1), legend.y=c(0, 1), add=TRUE)
+######
+par(mfrow=c(1,2), cex=0.75, mar=c(1,1,1,1), mgp=c(2,0.5,0), bty="L")
+plot(0, 0, type="n", xaxt="n", yaxt="n", xlab="", ylab="", main="spatial 
+     effects",
+     xlim=c(50000, 460000), ylim=c(550000, 1200000))
+plot.poly(data.shape, sort(si), seq(-10, 1.5, 0.25),
+          legend.x=c(65000, 75000), legend.y=c(550000, 750000), add=TRUE)
+plot(0, 0, type="n", xaxt="n", yaxt="n", xlab="", ylab="", main="residual 
+     effects",
+     xlim=c(50000, 460000), ylim=c(550000, 1200000))
+plot.poly(data.shape, eta-loge-si, seq(-.05, .05, 0.01),
+          legend.x=c(65000, 75000), legend.y=c(550000, 750000), add=TRUE)
+####
+par(mfrow=c(1,2), cex=0.75, mar=c(1,1,1,1), mgp=c(2,0.5,0), bty="L")
+plot(0, 0, type="n", xaxt="n", yaxt="n", xlab="", ylab="", main="spatial 
+     effects",
+     xlim=c(50000, 460000), ylim=c(550000, 1200000))
+plot.poly(data.shape, si, seq(-1, 1.5, 0.25),
+          legend.x=c(65000, 75000), legend.y=c(550000, 750000), add=TRUE)
+plot(0, 0, type="n", xaxt="n", yaxt="n", xlab="", ylab="", main="residual 
+     effects",
+     xlim=c(50000, 460000), ylim=c(550000, 1200000))
+plot.poly(data.shape, eta-loge-si, seq(-.1, 1.5, 0.25),
+          legend.x=c(65000, 75000), legend.y=c(550000, 750000), add=TRUE)
+```
