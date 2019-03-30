@@ -4,11 +4,11 @@ This repo has various data analysis projects. Below is the list of projects alon
 ### [Profitable localities for Pizza shop in Bangalore](https://nbviewer.jupyter.org/github/suhasshastry/DataAnalysis/blob/master/Pizza/report1.ipynb)
 •	Created a predictive model to understand the most profitable neighborhood in Bangalore for a pizza shop outlet using [Foursquare](https://developer.foursquare.com/) APIs.
 
-### [Spatial Poisson Regression of Dinner Restaurants in Bangalore](https://github.com/suhasshastry/DataAnalysis/blob/master/Dinner/project.pdf)
-•	Analyzed spatial effect of all the dinner restaurants in Bangalore as point process. Modelled this data as Spatial Poisson Regression model in R using Gibbs sampling to estimate the parameters.
-
 ### [Visualization of Absenteeism data in Python](https://nbviewer.jupyter.org/github/suhasshastry/DataAnalysis/blob/master/absenteeism/absenteeism.ipynb)
 •	Visualized various factors and relationships causing Absenteeism in a Brazil firm using Python. This is implemented as a Jupyter Notebook.
+
+### [Spatial Poisson Regression of Dinner Restaurants in Bangalore](https://github.com/suhasshastry/DataAnalysis/blob/master/Dinner/project.pdf)
+•	Analyzed spatial effect of all the dinner restaurants in Bangalore as point process. Modelled this data as Spatial Poisson Regression model in R using Gibbs sampling to estimate the parameters.
 
 ### [Exploratory data analysis of Epilepsy data](https://github.com/suhasshastry/DataAnalysis/blob/master/Epilepsy/epilepsy.pdf)
 •	Analyzed Epilepsy data in R to identify seizure pattern. PCA, Factor analysis, Machine Learning algorithms like Hierarchical clustering, K-Means clustering, KNN classification and Random Forest were implemented for this data set. 
