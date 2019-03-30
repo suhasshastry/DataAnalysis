@@ -1,6 +1,9 @@
 # Data analysis
 This repo has various data analysis projects. Below is the list of projects along with the links to their reports.
 
+### [Profitable localities for Pizza shop in Bangalore](https://nbviewer.jupyter.org/github/suhasshastry/DataAnalysis/blob/master/Pizza/report1.ipynb)
+•	Created a predictive model to understand the most profitable neighborhood in Bangalore for a pizza shop outlet using [Foursquare](https://developer.foursquare.com/) APIs.
+
 ### [Spatial Poisson Regression of Dinner Restaurants in Bangalore](https://github.com/suhasshastry/DataAnalysis/blob/master/Dinner/project.pdf)
 •	Analyzed spatial effect of all the dinner restaurants in Bangalore as point process. Modelled this data as Spatial Poisson Regression model in R using Gibbs sampling to estimate the parameters.
 
