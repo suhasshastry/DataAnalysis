@@ -1,6 +1,10 @@
 # Data analysis
 This repo has various data analysis projects. Below is the list of projects along with the links to their reports.
 
+### [Bank Marketing Analysis for Term Deposit](https://www.kaggle.com/suhasshastry/bank-marketing-analysis-for-term-deposit)
+•	Created a predictive model using SVM, Logistic Regression and Random Forest on Kaggle to predict whether a customer will subscribe to Term Deposit from a bank based on their campaign. Imbalance in data was treated with SMOTE method. SVM with gaussian kernel outperforms all other models with 0.89 precision and 0.98 recall.
+
+
 ### [Profitable localities for Pizza shop in Bangalore](https://nbviewer.jupyter.org/github/suhasshastry/DataAnalysis/blob/master/Pizza/report1.ipynb)
 •	Created a predictive model to understand the most profitable neighborhood in Bangalore for a pizza shop outlet using [Foursquare](https://developer.foursquare.com/) APIs.
 
